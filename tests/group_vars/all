@@ -58,6 +58,22 @@ pve_users:
     email: tempuser@pve.example
     firstname: Test
     lastname: User
+  - name: pveshadowtest1@pve
+    password: "Test135"
+    enable: yes
+    groups:
+      - test_users
+  - name: pveshadowtest2@pve
+    password: "Test246"
+    sha256: $5$rounds=80000$wnsT7Yr92oJoP28r$cKhJImk5mfuSKV9b3mumNzlbstFUplKtQXXMo4G6Ep5
+    enable: yes
+    groups:
+      - test_users
+  - name: pveshadowtest3@pve
+    sha256: $5$rounds=12345$q3hvJE5mn5jKRsW.$BbbYTFiaImz9rTy03GGi.Jf9YY5bmxN0LU3p3uI1iUB
+    enable: no
+    groups:
+      - test_users
 pve_acls: # This should generate 3 different ACLs (note that this is count should be modified in tests/test.yml if this var is changed)
   - path: /
     roles: [ "Administrator" ]
