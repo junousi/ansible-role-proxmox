@@ -37,6 +37,8 @@
   when: "inventory_hostname in groups[pve_ceph_mgr_group]"
 
 - block:
+    # If "ceph-volume lvm batch" has already been run for an NVMe, it will get picked up to _ceph_volume_data
+    # and successsively skipped in OSD creations
     - name: Query for existing Ceph volumes
       pve_ceph_volume:
       check_mode: no
@@ -52,6 +54,36 @@
       loop: "{{ pve_ceph_osds }}"
       when: item.device not in _existing_ceph_osds
 
+## Presuming following data structure (subject to change)
+#pve_ceph_osds:
+#  - device: /dev/nvme2n1
+#    block.db: /dev/nvme0n1
+#    lvm_batch: true
+#    osds_per_device: 4
+#  - device: /dev/nvme3n1
+#    block.db: /dev/nvme0n1
+#    lvm_batch: true
+#    osds_per_device: 4
+## An MVP to get this working with would be
+#pve_ceph_osds:
+#  - device: /dev/nvme0n1
+#    lvm_batch: true
+
+    - name: Create Ceph OSDs with ceph-volume lvm batch
+      pve_ceph_volume:
+        device: "{{ item.device }}"
+        lvm_batch: true
+        osds_per_device: "{{ item.osds_per_device | default(4) }}"
+        #block.db: 'not_implemented'
+      loop: '{{ _ceph_osds_diff | default([]) }}'
+      when: item.lvm_batch is defined and item.lvm_batch
+      ## We probably don't want to force this to run in --check mode,
+      ## but it would be awesome to have an assertion which would predict if it's going to fail or not.
+      ## Failure scenario could be e.g.:
+      ## - data device is unprovisioned, but DB device is provisioned / can't be written to
+      ## - user gives some other kind of garbage as input
+      #check_mode: no
+
     - name: Create Ceph OSDs
       ansible.builtin.command: >-
         pveceph osd create {{ item.device }}
@@ -59,6 +91,7 @@
         {% if "block.db" in item %}--db_dev {{ item["block.db"] }}{% endif %}
         {% if "block.wal" in item %}--wal_dev {{ item["block.wal"] }}{% endif %}
       loop: '{{ _ceph_osds_diff | default([]) }}'
+      when: item.lvm_batch is defined and not item.lvm_batch
   tags: create_osd
 
 - block:
