@@ -29,7 +29,7 @@ options:
     data:
         description:
             - The logical volume name or device to use for the OSD data.
-        required: true
+        required: false
     data_vg:
         description:
             - If data is a lv, this must be the name of the volume group it belongs to.
