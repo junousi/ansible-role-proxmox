@@ -87,12 +87,34 @@ def list_osd(module):
 
     return cmd
 
+def create_lvm_batch(module):
+    '''
+    Create LVM batch - just a PoC - single device, no separate DB
+    '''
+
+    # get module variables
+    cluster = module.params['cluster']
+    device = module.params['device']
+    osds_per_device = module.params.get('osds_per_device', 4)
+
+    # Build the CLI
+    action = ['lvm', 'batch']
+    cmd = ['ceph-volume', '--cluster', cluster, '--osds-per-device', osds_per_device]
+    cmd.extend(action)
+    cmd.append(device)
+    cmd.append('--format=json')
+
+    return cmd
+
 
 def run_module():
     module_args = dict(
         cluster=dict(type='str', required=False, default='ceph'),
         data=dict(type='str', required=False),
         data_vg=dict(type='str', required=False),
+        lvm_batch=dict(type='bool', required=False, default=False),
+        device=dict(type='str', required=False),
+        osds_per_device=dict(type='int', required=False, default=4),
     )
 
     module = AnsibleModule(
@@ -116,8 +138,12 @@ def run_module():
     # start execution
     startd = datetime.datetime.now()
 
+    # If requested in input args, create LVM batch, otherwise
     # List Ceph LVM Metadata on a device
-    rc, cmd, out, err = exec_command(module, list_osd(module))
+    if module.params.get('lvm_batch', False):
+        rc, cmd, out, err = exec_command(module, create_lvm_batch(module))
+    else:
+        rc, cmd, out, err = exec_command(module, list_osd(module))
 
     endd = datetime.datetime.now()
     delta = endd - startd
